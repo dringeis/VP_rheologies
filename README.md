@@ -22,3 +22,5 @@ with the acronyms:
 - NNFR: non normal flow rule
 - MC: Mohr-Coulomb
 - Ell. : Elliptical/Ellipse
+- TD : Teardrop
+- PL : Parabolic Lens
