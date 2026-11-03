@@ -526,43 +526,49 @@ def mceG(data={}, rheo={}, rheo_n = ''):
         rheo['mu_c'] = mu_c
 
     # compute the MC zeta
-    delta = eII + mu * e**2 * eI
-    flow_rate = np.abs((1 + kt) * mu * e**2 / ( 2 * delta ) )
-    zeta_mc = press0 * flow_rate
+    delta_mc = np.maximum(eII + mu * e**2 * eI, 1e-20)
+    zeta_mc = (1. + kt) * mu * e**2 * press0 / (2. * delta_mc)
 
     # compute the cap zeta
-    delta_c = mu_c * e**2 * eI - eII
-    flow_rate_c = np.abs(  (1 + kt) * mu_c * e**2 / ( 2 * delta_c ) )
-    zeta_c = press0 * flow_rate_c
+    delta_c = np.maximum(eII - mu_c * e**2 * eI ,1e-20)
+    zeta_c  = (1. + kt) * mu_c * e**2 * press0 / (2. * delta_c)
 
     # Apply viscous capping
     zeta_mc = np.minimum(zeta_mc,ZMAX)
-    zeta_c = np.minimum(zeta_c,ZMAX)
+    zeta_c  = np.minimum(zeta_c ,ZMAX)
 
-    press_mc = 0.5 * (1 - kt) * press0 * (1 - SEAICEpressReplFac) + SEAICEpressReplFac * zeta_mc / flow_rate
-    press_c =  0.5 * (1 - kt) * press0 * (1 - SEAICEpressReplFac) + SEAICEpressReplFac * zeta_c / flow_rate_c
+    press_mc = 0.5 * (1. - kt) * ( press0 * (1. - SEAICEpressReplFac) + SEAICEpressReplFac * zeta_mc * 2 * delta_mc / ( (1+kt) * mu   * e**2))
+    press_c =  0.5 * (1. - kt) * ( press0 * (1. - SEAICEpressReplFac) + SEAICEpressReplFac * zeta_c  * 2 * delta_c  / ( (1+kt) * mu_c * e**2))
 
     # compute MC and cap eta
-    eta_c = zeta_c / e**2
+    eta_c  = zeta_c  / e**2
     eta_mc = zeta_mc / e**2
 
     # Choose between MC limbs and cap
-    # zeta = np.minimum(zeta_mc, zeta_c)
-    # eta = np.minimum(eta_mc, eta_c)
-    # press = np.minimum(press_mc, press_c)
+    eta = np.minimum(eta_mc, eta_c)
+    zeta = np.minimum(zeta_mc, zeta_c)
+    press = np.minimum(press_mc, press_c)
 
     # Choose between MC limbs and cap
-    zeta = np.where(eta_mc<eta_c, zeta_mc, zeta_c)
-    press = np.where(eta_mc<eta_c, press_mc, press_c)
-    eta = np.where(eta_mc<eta_c, eta_mc, eta_c)
+    # eta = eta_mc #np.minimum(eta_mc, eta_c)
+    # zeta = zeta_mc #np.minimum(zeta_mc, zeta_c)
+    # press = press_mc #np.minimum(press_mc, press_c)
+
+    # Choose between MC limbs and cap
+    # eta = eta_c #np.minimum(eta_mc, eta_c)
+    # zeta = zeta_c #np.minimum(zeta_mc, zeta_c)
+    # press = press_c #np.minimum(press_mc, press_c)
+
+    # Choose between MC limbs and cap
+    # zeta = np.where(eta_mc<eta_c, zeta_mc, zeta_c)
+    # press = np.where(eta_mc<eta_c, press_mc, press_c)
+    # eta = np.where(eta_mc<eta_c, eta_mc, eta_c)
 
     ## When no cap is used, the Conditions to be in the triangle
     # lim_zeta = press0 / ( 4 * np.abs(eI) + 1e-20)
     # zeta = np.minimum(zeta,lim_zeta)
     # lim_eta = mu * press0 / ( 2*eII + 1e-20)
     # eta = np.minimum(eta,lim_eta)
-
-
 
     # press = zeta * delta_c * (1. - kt) / ((1.+kt) * e**2 * mu_c)
     # press = 0.5 * press0 * ( 1. - kt )
@@ -615,8 +621,10 @@ def mctd(data={}, rheo={}, rheo_n = ''):
     k = eI / ( eII + 1e-20)
     x = (-(6.*(1.+kt)-2*k*k)+2.*k*np.sqrt(k*k+3. * (1.+kt)))/9. + kt
 
-    alpha = 0.95
+    alpha = 0.99
     x = np.minimum( x, alpha*kt )
+    # p = 100.
+    # x = -np.log(np.exp(-p*x)+np.exp(-p*kt))/p
 
     cyc = (2. - kt)/3.
 
@@ -1261,6 +1269,7 @@ def plot_FR(data={}):
     ax.set_xlabel('Sigma I (normalized)')
 
     for rheo_n in data['rheos']:
+        print('rheo_n FR ',rheo_n)
         plot_sIFR(data=data, rheo_n=rheo_n, ax=ax)
 
     ax.legend(markerscale=2)
@@ -1323,6 +1332,7 @@ def plot_prAng(data={}):
         plot_prAng_ori(data=data, rheo_n=rheo_n, ax=ax)
 
     ax.legend(markerscale=2)
+    ax.set_aspect('equal')
 
     return None
 
@@ -1356,8 +1366,8 @@ def plot_prAng_ori(data={}, rheo_n='', ax=None, carg=None, opt=None):
         ax.plot(psi_st.ravel(),psi_sr.ravel()-psi_st.ravel(),'.', color=carg, ms=4, label=rheo_n, alpha=0.2)
         # ax.plot(psi_st.ravel(),psi_sr.ravel(),'.', color=carg, ms=4, label=rheo_n, alpha=0.2)
     else:
-        p = ax.plot(psi_st.ravel(),psi_sr.ravel()-psi_st.ravel(),'.', ms=4, label=rheo_n, alpha=0.2)
-        # p = ax.plot(psi_st.ravel(),psi_sr.ravel(),'.', ms=4, label=rheo_n, alpha=0.2)
+        # p = ax.plot(psi_st.ravel(),psi_sr.ravel()-psi_st.ravel(),'.', ms=4, label=rheo_n, alpha=0.2)
+        p = ax.plot(psi_st.ravel(),psi_sr.ravel(),'.', ms=4, label=rheo_n, alpha=0.2)
         carg = p[0].get_color()
 
     return None
