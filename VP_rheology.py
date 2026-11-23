@@ -20,7 +20,7 @@ plt.rc('font', family='sans')
 # create fake deformation data
 # data = create_data(random=False,i=2e-5,j=0,plot=False,sym=True,s=201)
 # data = create_data(random=True,i=2e-1,j=0,plot=False,sym=True,s=201)
-data = create_data(random=True,i=7e-4,j=0,plot=False,sym=True,s=204)
+data = create_data(random=True,i=1e-4,j=0,plot=False,sym=True,s=204)
 
 # compute simpler and additionnal variables
 comp_sim_sr(data)
@@ -58,18 +58,18 @@ kt = 0.05
 rheo_to_viz = {
     # 'ell2':{'rheo_t':'ell', 'e':2.0, 'kt':kt},
     # 'ell2':{'rheo_t':'ell', 'e':1.0, 'kt':kt},
-    # 'ell1p4':{'rheo_t':'ell', 'e':1.4, 'kt':kt},
+    'ell1p4':{'rheo_t':'ell', 'e':1.4, 'kt':kt},
     # 'ell4':{'rheo_t':'ell', 'e':4.0, 'kt':kt, 'plot_inv':True},
     # 'e2r4t':{'rheo_t':'ellt', 'e':1.0, 'efr':2.0, 'kt':kt},
     # 'e2r4':{'rheo_t':'ell', 'e':2.0, 'efr':4.0, 'kt':kt},
     # 'e2r1':{'rheo_t':'ell', 'e':2.0, 'efr':1.0, 'kt':kt},
-    'mc.7s':{'rheo_t':'mcs', 'mu':0.7, 'kt':kt},
+    # 'mc.7s':{'rheo_t':'mcs', 'mu':0.7, 'kt':kt},
     'mc.7e1p4':{'rheo_t':'mce', 'mu':0.7, 'kt':kt, 'e':1.4, 'mu_c':4},
     'mc.7e1p4G':{'rheo_t':'mceG', 'mu':0.7, 'kt':kt, 'e':1.4, 'mu_c':4},
     # 'td':{'rheo_t':'td', 'kt':kt},
     # 'pl':{'rheo_t':'pl', 'kt':kt},
-    'mc7td':{'rheo_t':'mctd', 'mu':0.7, 'kt':kt, 'mu_c':4},
-    'mc7pl':{'rheo_t':'mcpl', 'mu':0.7, 'kt':kt, 'mu_c':4},
+    # 'mc7td':{'rheo_t':'mctd', 'mu':0.7, 'kt':kt, 'mu_c':4},
+    # 'mc7pl':{'rheo_t':'mcpl', 'mu':0.7, 'kt':kt, 'mu_c':4},
     # 'e2td':{'rheo_t':'etd', 'kt':kt, 'e':2.},
     # 'e2pl':{'rheo_t':'epl', 'kt':kt, 'e':2.},
     # 'muID':{'rheo_t':d'muID', 'db':False},

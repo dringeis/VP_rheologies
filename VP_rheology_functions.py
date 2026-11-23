@@ -17,6 +17,9 @@ plt.rc('font', family='sans')
 
 from VP_rheology_settings import *
 
+small = 1e-20
+smallSq = small**2
+
 def create_data(random=True,i=1e-6,j=0,plot=False,sym=True,s=201):
     '''
     Creating fake random data
@@ -339,7 +342,7 @@ def ellip_test(data={}, rheo={}, rheo_n = '', rot=False):
 
     ### Computing eta
     sI = zeta * ep - press
-    eta = 1. / e * np.sqrt( kt*press0**2 -  sI * ( sI + press0*(1 - kt) ) ) / (2 * eII + 1e-20)
+    eta = 1. / e * np.sqrt( kt*press0**2 -  sI * ( sI + press0*(1 - kt) ) ) / (2 * eII + small)
 
 
     ### save in the dictionary
@@ -470,12 +473,12 @@ def mcs(data={}, rheo={}, rheo_n = ''):
     zetaMax = press0*(1+kt)/(2.*deltaMin)
 
     # compute the viscosities
-    zeta = np.minimum(zetaMax,press0*(1+kt)/(np.fabs(2*eI+1e-20)))
+    zeta = np.minimum(zetaMax,press0*(1+kt)/(np.fabs(2*eI+small)))
 
     # press = (press0 * (1.-SEAICEpressReplFac) + SEAICEpressReplFac * 2 * zeta * np.fabs(ep)/(1.+kt))*(1.-kt)
     press = 0.5 * press0 * ( 1. - kt )
 
-    eta = np.minimum(mu*(press-zeta*eI+kt*press0)/(np.maximum(1e-20,eII)),zetaMax)
+    eta = np.minimum(mu*(press-zeta*eI+kt*press0)/(np.maximum(small,eII)),zetaMax)
 
     ### save in the dictionary
     data[rheo_n] = rheo
@@ -526,11 +529,11 @@ def mceG(data={}, rheo={}, rheo_n = ''):
         rheo['mu_c'] = mu_c
 
     # compute the MC zeta
-    delta_mc = np.maximum(eII + mu * e**2 * eI, 1e-20)
+    delta_mc = np.maximum(eII + mu * e**2 * eI, small)
     zeta_mc = (1. + kt) * mu * e**2 * press0 / (2. * delta_mc)
 
     # compute the cap zeta
-    delta_c = np.maximum(eII - mu_c * e**2 * eI ,1e-20)
+    delta_c = np.maximum(eII - mu_c * e**2 * eI ,small)
     zeta_c  = (1. + kt) * mu_c * e**2 * press0 / (2. * delta_c)
 
     # Apply viscous capping
@@ -565,9 +568,9 @@ def mceG(data={}, rheo={}, rheo_n = ''):
     # eta = np.where(eta_mc<eta_c, eta_mc, eta_c)
 
     ## When no cap is used, the Conditions to be in the triangle
-    # lim_zeta = press0 / ( 4 * np.abs(eI) + 1e-20)
+    # lim_zeta = press0 / ( 4 * np.abs(eI) + small)
     # zeta = np.minimum(zeta,lim_zeta)
-    # lim_eta = mu * press0 / ( 2*eII + 1e-20)
+    # lim_eta = mu * press0 / ( 2*eII + small)
     # eta = np.minimum(eta,lim_eta)
 
     # press = zeta * delta_c * (1. - kt) / ((1.+kt) * e**2 * mu_c)
@@ -618,27 +621,35 @@ def mctd(data={}, rheo={}, rheo_n = ''):
         press0 = press0_d
         rheo['press0'] = press0
 
-    k = eI / ( eII + 1e-20)
+    k = eI / ( eII + small)
     x = (-(6.*(1.+kt)-2*k*k)+2.*k*np.sqrt(k*k+3. * (1.+kt)))/9. + kt
 
-    alpha = 0.99
+    alpha = 0.95
     x = np.minimum( x, alpha*kt )
+
     # p = 100.
     # x = -np.log(np.exp(-p*x)+np.exp(-p*kt))/p
 
     cyc = (2. - kt)/3.
 
-    zeta = ( x + cyc ) / np.copysign(np.maximum(np.fabs(eI), 1e-20),eI) * press0
-    # zeta = 2 * press0 / (9 * eII + 1e-20) * (k + np.sqrt(k**2 + 3 * (1 - kt) ) )
+    zeta = ( x + cyc ) / np.copysign(np.sqrt(eI*eI+ deltaMinSq),eI) * press0
 
-    press = cyc * press0
-
-    eta_mc = - press0 * mu * ( x - kt ) / ( eII + 1e-20 )
-    # eta_mc = mu * (press - zeta * eI - press0 * kt) / ( 2 * eII + 1e-20 )
+    eta_mc = - press0 * mu * ( x - kt ) / np.sqrt( eII**2 + deltaMinSq )
 
     # compressive cap
-    eta_c = mu_c * (zeta * eI - press + press0) / (np.maximum(1e-20,eII))
+    eta_c = mu_c * (zeta * eI + press0 * (1. - cyc )) / (np.sqrt(deltaMinSq+eII**2))
     eta = np.minimum(eta_mc, eta_c)
+
+    eta_max = ZMAX * np.minimum(eta/(np.abs(zeta) + small),1.)
+    zeta_max = ZMAX * np.minimum(zeta/(np.abs(eta) + small),1.)
+
+    # eta = np.minimum(eta,eta_max)
+    # zeta = np.minimum(zeta,zeta_max)
+
+    zeta = np.minimum(zeta,ZMAX)
+    eta = np.minimum(eta,ZMAX)
+
+    press = cyc * press0
 
     ### save in the dictionary
     data[rheo_n] = rheo
@@ -685,7 +696,7 @@ def mcpl(data={}, rheo={}, rheo_n = ''):
         rheo['mu_c'] = mu_c
 
 
-    k = eI / (eII + 1e-20) # 0
+    k = eI / (eII + small) # 0
 
     x = 0.5 * (k - 1 + kt) #
 
@@ -693,17 +704,30 @@ def mcpl(data={}, rheo={}, rheo_n = ''):
     x = np.minimum( x, alpha*kt )
     x = np.maximum( x, -1+(1-alpha)*kt )
 
+    # p = 100.
+    # x = -np.log(np.exp(-p*x)+np.exp(-p*kt))/p
+    # x = np.log(np.exp(p*x)+np.exp(-p))/p
+
     cyc = 0.5 * (1 - kt)
 
-    zeta = ( x + cyc ) / np.copysign(np.maximum(np.fabs(eI), deltaMinSq),eI) * press0
+    zeta = ( x + cyc ) / np.copysign(np.sqrt(eI**2+deltaMinSq),eI) * press0
 
-    eta_mc = - press0 * mu * ( x - kt ) / ( eII + 1e-20 )
+    eta_mc = - press0 * mu * ( x - kt ) / ( np.sqrt(eII**2+deltaMinSq) )
 
-    press = cyc * press0
-
-    eta_c = mu_c * (zeta * eI - press + press0) / (np.maximum(deltaMin,eII))
+    eta_c = mu_c * (zeta * eI + press0 * (1-cyc) )/ (np.sqrt(deltaMinSq+eII**2))
 
     eta = np.minimum(eta_mc, eta_c)
+
+    # eta_max = ZMAX * np.minimum(eta/(np.abs(zeta) + small),1.)
+    # zeta_max = ZMAX * np.minimum(zeta/(np.abs(eta) + small),1.)
+
+    # eta = np.minimum(eta,eta_max)
+    # zeta = np.minimum(zeta,zeta_max)
+
+    # zeta = np.minimum(zeta,ZMAX)
+    # eta = np.minimum(eta,ZMAX)
+
+    press = cyc * press0
 
     ### save in the dictionary
     data[rheo_n] = rheo
@@ -736,7 +760,7 @@ def td(data={}, rheo={}, rheo_n = ''):
         press0 = press0_d
         rheo['press0'] = press0
 
-    k = eI / ( eII + 1e-20)
+    k = eI / ( eII + small)
     x = (-(6.*(1.+kt)-2*k*k)+2.*k*np.sqrt(k*k+3. * (1.+kt)))/9. + kt
 
     alpha = 0.95
@@ -747,7 +771,7 @@ def td(data={}, rheo={}, rheo_n = ''):
 
     zeta = ( x + cyc ) / np.copysign(np.maximum(np.fabs(eI), deltaMinSq),eI) * press0
 
-    eta = - ( x - kt ) * np.sqrt( 1. + x ) * press0 / (eII + 1e-20)
+    eta = - ( x - kt ) * np.sqrt( 1. + x ) * press0 / (eII + small)
 
     press = cyc * press0
 
@@ -783,7 +807,7 @@ def pl(data={}, rheo={}, rheo_n = ''):
         rheo['press0'] = press0
 
 
-    k = eI / (eII + 1e-20) # 0
+    k = eI / (eII + small) # 0
 
     x = 0.5 * (k - 1 + kt) #
 
@@ -793,9 +817,9 @@ def pl(data={}, rheo={}, rheo_n = ''):
 
     cyc = 0.5 * (1 - kt)
 
-    zeta = ( x + cyc ) / np.copysign(np.maximum(np.fabs(eI), 1e-20),eI) * press0
+    zeta = ( x + cyc ) / np.copysign(np.maximum(np.fabs(eI), small),eI) * press0
 
-    eta = - ( x - kt ) * ( 1. + x ) * press0 / (eII + 1e-20)
+    eta = - ( x - kt ) * ( 1. + x ) * press0 / (eII + small)
 
     press = cyc * press0
 
@@ -836,7 +860,7 @@ def etd(data={}, rheo={}, rheo_n = ''):
         press0 = press0_d
         rheo['press0'] = press0
 
-    k = eI / ( eII + 1e-20)
+    k = eI / ( eII + small)
 
     x = (-(6.*(1.+kt)-2*k*k)+2.*k*np.sqrt(k*k+3. * (1.+kt)))/9. + kt
 
@@ -846,9 +870,9 @@ def etd(data={}, rheo={}, rheo_n = ''):
 
     cyc = (2. - kt) / 3.
 
-    zeta = (x + cyc) / np.copysign(np.maximum(np.fabs(eI), 1e-20),eI) * press0
+    zeta = (x + cyc) / np.copysign(np.maximum(np.fabs(eI), small),eI) * press0
 
-    eta = 1. / e * np.sqrt( kt - x * ( x + 1-kt ) ) / (eII + 1e-20) * press0
+    eta = 1. / e * np.sqrt( kt - x * ( x + 1-kt ) ) / (eII + small) * press0
 
     press = cyc * press0
 
@@ -889,7 +913,7 @@ def epl(data={}, rheo={}, rheo_n = ''):
         press0 = press0_d
         rheo['press0'] = press0
 
-    k = eI / ( eII + 1e-20)
+    k = eI / ( eII + small)
 
     x = 0.5 * (k - 1 + kt)
 
@@ -900,9 +924,9 @@ def epl(data={}, rheo={}, rheo_n = ''):
 
     cyc = 0.5 * (1 - kt)
 
-    zeta = (x + cyc) / np.copysign(np.maximum(np.fabs(eI), 1e-20),eI) * press0
+    zeta = (x + cyc) / np.copysign(np.maximum(np.fabs(eI), small),eI) * press0
 
-    eta=  1 / e * np.sqrt( kt - x * ( x + 1-kt ) ) / (eII + 1e-20) * press0
+    eta=  1 / e * np.sqrt( kt - x * ( x + 1-kt ) ) / (eII + small) * press0
 
     press = cyc * press0
 
@@ -1038,13 +1062,13 @@ def muID(data={}, rheo={}, rheo_n = ''):
     # press = Pmax
     if db: pr_var_stats(press, 'press')
 
-    p_eff = press * ( 1 - mubI * eI/ (eII + 1e-20) )
+    p_eff = press * ( 1 - mubI * eI/ (eII + small) )
     if db: pr_var_stats(p_eff, 'p_eff')
 
-    eta = press / (2 * eII+ 1e-20) * muI
+    eta = press / (2 * eII+ small) * muI
     if db: pr_var_stats(eta, 'eta')
 
-    zeta = press / (2 * eII+ 1e-20) * (muI + 2 * mubI)
+    zeta = press / (2 * eII+ small) * (muI + 2 * mubI)
     if db: pr_var_stats(zeta, 'zeta')
 
     ### save in the dictionary

@@ -23,7 +23,7 @@ SEAICEmcC_d=SEAICEmcMu_d*tnsFac_mc_d*SEAICE_strength_d
 ### Using smooth min and max to improve convergence
 ## For Delta
 SEAICE_DELTA_SMOOTHREG=True
-deltaMin=1e-10
+deltaMin=1e-9
 deltaMinSq=deltaMin**2
 
 ## For Zeta
